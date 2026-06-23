@@ -1,0 +1,35 @@
+name: Outrider
+
+# Cron disabled; triggered via workflow_dispatch.
+on:
+  workflow_dispatch:
+
+jobs:
+  recommend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      REMYX_API_KEY: ${{ secrets.REMYX_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - name: Mint Remyx bot token
+        id: remyx-bot
+        shell: bash
+        run: |
+          token="$(curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.REMYX_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"repo\": \"${{ github.repository }}\"}" \
+            "https://engine.remyx.ai/api/v1.0/github/installation-token" \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('token', ''))")" || token=""
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - uses: remyxai/outrider@v1
+        with:
+          interest-id: 22b4f674-6447-470d-87ef-747a5e36139e
+          github-token: ${{ steps.remyx-bot.outputs.token }}
+          rate-limit-days: '0'
